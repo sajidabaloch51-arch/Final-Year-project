@@ -46,10 +46,16 @@ def data_uri_to_bytes(data_uri: str) -> bytes:
     return base64.b64decode(data_uri.split(",", 1)[1])
 
 
-def generate_image(prompt: str, width: int, height: int, seed: int | None) -> tuple[str, str, int]:
+def generate_image(
+    prompt: str,
+    width: int,
+    height: int,
+    seed: int | None,
+    enhance_faces: bool = True,
+) -> tuple[str, str, int]:
     """Try providers in order; return (data_uri, provider, seed_used)."""
     seed_used = _fresh_seed(seed)
-    image_prompt = build_image_prompt(prompt, seed=seed_used)
+    image_prompt = build_image_prompt(prompt, seed=seed_used, enhance_faces=enhance_faces)
     errors: list[str] = []
 
     openai_key = os.environ.get("OPENAI_API_KEY")
@@ -71,23 +77,59 @@ def generate_image(prompt: str, width: int, height: int, seed: int | None) -> tu
         except Exception as e:
             errors.append(f"HuggingFace: {e}")
 
-    try:
-        return (
-            generate_via_pollinations(image_prompt, seed=seed_used, width=width, height=height),
-            "Pollinations Flux",
-            seed_used,
-        )
-    except Exception as e:
-        errors.append(f"Pollinations: {e}")
+    # Face mode: prefer Horde realism models + CodeFormers face restore.
+    if enhance_faces:
+        try:
+            return (
+                generate_via_stable_horde(
+                    image_prompt,
+                    seed=seed_used,
+                    width=width,
+                    height=height,
+                    enhance_faces=True,
+                ),
+                "Stable Horde Face HQ (CodeFormers)",
+                seed_used,
+            )
+        except Exception as e:
+            errors.append(f"Stable Horde: {e}")
 
-    try:
-        return (
-            generate_via_stable_horde(image_prompt, seed=seed_used, width=width, height=height),
-            "Stable Horde",
-            seed_used,
-        )
-    except Exception as e:
-        errors.append(f"Stable Horde: {e}")
+        try:
+            return (
+                generate_via_pollinations(
+                    image_prompt, seed=seed_used, width=width, height=height
+                ),
+                "Pollinations Flux",
+                seed_used,
+            )
+        except Exception as e:
+            errors.append(f"Pollinations: {e}")
+    else:
+        try:
+            return (
+                generate_via_pollinations(
+                    image_prompt, seed=seed_used, width=width, height=height
+                ),
+                "Pollinations Flux",
+                seed_used,
+            )
+        except Exception as e:
+            errors.append(f"Pollinations: {e}")
+
+        try:
+            return (
+                generate_via_stable_horde(
+                    image_prompt,
+                    seed=seed_used,
+                    width=width,
+                    height=height,
+                    enhance_faces=False,
+                ),
+                "Stable Horde",
+                seed_used,
+            )
+        except Exception as e:
+            errors.append(f"Stable Horde: {e}")
 
     raise RuntimeError(" | ".join(errors) if errors else "All image providers failed.")
 
@@ -102,15 +144,20 @@ def main() -> None:
     st.title("IG-06 · Balochistan Text-to-Image Benchmark")
     st.caption(
         "Browse dataset prompts and generate images. "
-        "Your prompt text is used as-is (prompt-faithful generation)."
+        "Your prompt stays primary; optional face enhancement improves human faces."
     )
 
     df = load_prompts()
 
     with st.sidebar:
         st.header("Settings")
-        width = st.select_slider("Width", options=[512, 768, 1024], value=1024)
+        width = st.select_slider("Width", options=[512, 768, 1024], value=768)
         height = st.select_slider("Height", options=[512, 768, 1024], value=1024)
+        enhance_faces = st.checkbox(
+            "Enhance faces (recommended)",
+            value=True,
+            help="Uses photoreal face models + CodeFormers restore while keeping your prompt.",
+        )
         use_random_seed = st.checkbox("Random seed each run", value=True)
         fixed_seed = st.number_input("Fixed seed", min_value=1, max_value=2_147_483_647, value=42)
         st.divider()
@@ -183,10 +230,19 @@ def main() -> None:
                 st.error("Please enter or select a prompt first.")
             else:
                 seed_arg = None if use_random_seed else int(fixed_seed)
-                with st.spinner("Generating image from your prompt…"):
+                spinner_msg = (
+                    "Generating with face enhancement (may take 1–3 min)…"
+                    if enhance_faces
+                    else "Generating image from your prompt…"
+                )
+                with st.spinner(spinner_msg):
                     try:
                         data_uri, provider, seed_used = generate_image(
-                            prompt.strip(), width=int(width), height=int(height), seed=seed_arg
+                            prompt.strip(),
+                            width=int(width),
+                            height=int(height),
+                            seed=seed_arg,
+                            enhance_faces=enhance_faces,
                         )
                         img_bytes = data_uri_to_bytes(data_uri)
                         st.session_state["last_image"] = img_bytes

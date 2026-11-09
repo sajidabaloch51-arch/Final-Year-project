@@ -49,12 +49,19 @@ class GenerateRequest(BaseModel):
     seed: int = 42
     width: int = 1024
     height: int = 1024
+    enhance_faces: bool = True
 
 DEFAULT_NEGATIVE = (
     "ugly, deformed, disfigured, mutated, bad anatomy, bad proportions, "
     "extra limbs, fused fingers, poorly drawn face, asymmetric eyes, "
     "blurry, lowres, jpeg artifacts, watermark, text, logo, "
     "cartoon, anime, 3d render, cgi, doll, mannequin, plastic skin"
+)
+
+FACE_NEGATIVE = (
+    "melted face, distorted face, extra eyes, missing eyes, crossed eyes, "
+    "bad teeth, cloned face, uncanny valley, wax figure, statue face, "
+    "blurry face, low detail face, animal face, alien face"
 )
 
 # Photoreal models (prompt-faithful realism).
@@ -81,21 +88,28 @@ def _fresh_seed(client_seed: int | None = None) -> int:
     seed = (base ^ mix ^ int(time.time() * 1000)) & 0x7FFFFFFF
     return seed if seed != 0 else random.randint(1, 2_147_483_647)
 
-def build_image_prompt(prompt: str, seed: int = 0) -> str:
-    """Use the user's prompt as the image brief — do not replace the scene.
+def _prompt_mentions_person(prompt: str) -> bool:
+    t = (prompt or "").lower()
+    keys = (
+        "person", "people", "man", "woman", "boy", "girl", "face", "portrait",
+        "baloch", "teacher", "craft", "fisherman", "shepherd", "human",
+        "mother", "father", "child", "worker", "artisan",
+    )
+    return any(k in t for k in keys)
 
-    Only a short quality trailer is added. Cultural dress/jewellery must come
-    from the user's own prompt (dataset prompts already include them).
-    """
+def build_image_prompt(prompt: str, seed: int = 0, enhance_faces: bool = False) -> str:
+    """Keep the user's prompt as the scene; optionally add light face-quality cues."""
     scene = (prompt or "").strip()
     if not scene:
         return scene
-    # Tiny quality trailer only — keeps generations faithful to the given prompt.
-    return (
-        f"{scene}. "
-        f"Photorealistic photograph, natural human face if people are shown, "
-        f"sharp detail, natural lighting, high quality, seed {seed}"
-    )
+    parts = [scene, "Photorealistic photograph, sharp detail, natural lighting, high quality"]
+    if enhance_faces and _prompt_mentions_person(scene):
+        parts.append(
+            "natural realistic human face, clear eyes, detailed facial features, "
+            "skin texture, symmetrical face, looking toward camera when appropriate"
+        )
+    parts.append(f"seed {seed}")
+    return ". ".join(parts)
 
 def _bytes_to_data_uri(img_bytes: bytes, content_type: str = "image/jpeg") -> str:
     b64 = base64.b64encode(img_bytes).decode("utf-8")
@@ -324,47 +338,68 @@ def _wait_horde_image(host: str, job_id: str, api_key: str, timeout_sec: int = 3
     return _bytes_to_data_uri(base64.b64decode(img_ref), "image/webp")
 
 def generate_via_stable_horde(prompt: str, seed: int = 42, width: int = 1024, height: int = 1024,
-                              negative_prompt: str = ""):
-    """Photoreal human portraits via Horde; retries if face post-process workers fail."""
-    base_w, base_h = 768, 1024  # portrait frame — face fills more of the image
+                              negative_prompt: str = "", enhance_faces: bool = True):
+    """Photoreal generation via Horde; face restore when enhance_faces=True."""
+    if enhance_faces:
+        base_w, base_h = 768, 1024  # portrait frame — face fills more of the image
+    else:
+        base_w, base_h = _clamp_size(width, height, max_side=1024)
     api_key = os.environ.get("STABLE_HORDE_API_KEY") or "0000000000"
     neg = ", ".join(
-        p for p in (negative_prompt.strip(), DEFAULT_NEGATIVE) if p
+        p for p in (
+            negative_prompt.strip(),
+            DEFAULT_NEGATIVE,
+            FACE_NEGATIVE if enhance_faces else "",
+        ) if p
     )
 
     # Escalate from best face quality → most compatible if workers reject jobs.
-    attempts = [
-        {
-            "models": list(HORDE_FACE_MODELS),
-            "post_processing": ["CodeFormers"],
-            "steps": 35,
-        },
-        {
-            "models": [
-                "AbsoluteReality",
-                "Realistic Vision",
-                "ICBINP - I Can't Believe It's Not Photography",
-                "Deliberate",
-            ],
-            "post_processing": ["GFPGAN"],
-            "steps": 30,
-        },
-        {
-            "models": [
-                "AbsoluteReality",
-                "Realistic Vision",
-                "Deliberate",
-                "Dreamshaper",
-            ],
-            "post_processing": [],
-            "steps": 28,
-        },
-        {
-            "models": [],
-            "post_processing": [],
-            "steps": 25,
-        },
-    ]
+    if enhance_faces:
+        attempts = [
+            {
+                "models": list(HORDE_FACE_MODELS),
+                "post_processing": ["CodeFormers"],
+                "steps": 40,
+            },
+            {
+                "models": [
+                    "AbsoluteReality",
+                    "Realistic Vision",
+                    "ICBINP - I Can't Believe It's Not Photography",
+                    "Deliberate",
+                ],
+                "post_processing": ["GFPGAN"],
+                "steps": 35,
+            },
+            {
+                "models": [
+                    "AbsoluteReality",
+                    "Realistic Vision",
+                    "Deliberate",
+                    "Dreamshaper",
+                ],
+                "post_processing": [],
+                "steps": 30,
+            },
+            {
+                "models": [],
+                "post_processing": [],
+                "steps": 25,
+            },
+        ]
+    else:
+        attempts = [
+            {
+                "models": list(HORDE_FACE_MODELS),
+                "post_processing": [],
+                "steps": 28,
+            },
+            {
+                "models": [],
+                "post_processing": [],
+                "steps": 25,
+            },
+        ]
 
     last_error: Exception | None = None
     for attempt in attempts:
@@ -408,7 +443,10 @@ def api_generate_image(req: GenerateRequest):
 
     # Unique seed + prompt that follows the user's text (not a fixed template).
     seed = _fresh_seed(req.seed)
-    image_prompt = build_image_prompt(prompt_text, seed=seed)
+    enhance_faces = bool(req.enhance_faces)
+    image_prompt = build_image_prompt(
+        prompt_text, seed=seed, enhance_faces=enhance_faces
+    )
 
     openai_key = os.environ.get("OPENAI_API_KEY")
     hf_token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGINGFACE_API_KEY")
@@ -447,7 +485,48 @@ def api_generate_image(req: GenerateRequest):
             except Exception as e:
                 error_logs.append(f"HuggingFace error: {e}")
 
-        # Flux first — follows the given prompt more faithfully than SD templates.
+        if enhance_faces:
+            try:
+                image_uri = generate_via_stable_horde(
+                    image_prompt,
+                    seed=seed,
+                    width=req.width,
+                    height=req.height,
+                    negative_prompt=req.negative_prompt,
+                    enhance_faces=True,
+                )
+                return {
+                    "status": "success",
+                    "provider": "Stable Horde Face HQ (CodeFormers)",
+                    "image": image_uri,
+                    "seed": seed,
+                    "prompt_used": prompt_text,
+                }
+            except Exception as e:
+                error_logs.append(f"Stable Horde: {e}")
+
+            try:
+                image_uri = generate_via_pollinations(
+                    image_prompt, seed=seed, width=req.width, height=req.height
+                )
+                return {
+                    "status": "success",
+                    "provider": "Pollinations Flux",
+                    "image": image_uri,
+                    "seed": seed,
+                    "prompt_used": prompt_text,
+                }
+            except Exception as e:
+                error_logs.append(f"Pollinations: {e}")
+                raise HTTPException(
+                    status_code=502,
+                    detail=(
+                        "Image generation failed (free APIs are rate-limited right now). "
+                        "Wait ~1 minute and try again, or set STABLE_HORDE_API_KEY / "
+                        f"POLLINATIONS_API_KEY in .env. Details: {' | '.join(error_logs)}"
+                    ),
+                )
+
         try:
             image_uri = generate_via_pollinations(
                 image_prompt, seed=seed, width=req.width, height=req.height
@@ -469,6 +548,7 @@ def api_generate_image(req: GenerateRequest):
                 width=req.width,
                 height=req.height,
                 negative_prompt=req.negative_prompt,
+                enhance_faces=False,
             )
             return {
                 "status": "success",

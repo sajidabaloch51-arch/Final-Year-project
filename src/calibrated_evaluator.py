@@ -71,11 +71,20 @@ def build_feature_df(df: pd.DataFrame) -> pd.DataFrame:
     attrs = df["text"].apply(detect_attributes)
     attr_df = pd.DataFrame(list(attrs)).astype(int)
 
-    # Basic text features
+    # Basic text + face/portrait cues (helps calibrate human-subject prompts)
+    text_lower = df["text"].fillna("").str.lower()
     text_feats = pd.DataFrame({
         "prompt_len":    df["text"].str.len(),
         "word_count":    df["text"].str.split().str.len(),
         "has_balochi":   df["balochi_prompt"].notna().astype(int),
+        "mentions_face": text_lower.str.contains(
+            r"\b(?:face|portrait|eyes|looking|person|woman|man|girl|boy)\b",
+            regex=True,
+        ).astype(int),
+        "mentions_dress": text_lower.str.contains(
+            r"\b(?:dress|embroider|shalwar|kameez|doch|pashk|jewellery|jewelry)\b",
+            regex=True,
+        ).astype(int),
     })
 
     return pd.concat([
@@ -97,9 +106,10 @@ def train_calibrated_evaluator(df: pd.DataFrame) -> dict:
     print("  Building features …")
     feat_df = build_feature_df(df)
 
-    # TF-IDF on raw text
-    tfidf = TfidfVectorizer(max_features=500, ngram_range=(1, 2),
-                             sublinear_tf=True, strip_accents="unicode")
+    # TF-IDF on raw text (expanded vocab for better face/culture cues)
+    tfidf = TfidfVectorizer(max_features=800, ngram_range=(1, 2),
+                             sublinear_tf=True, strip_accents="unicode",
+                             min_df=2)
     X_tfidf = tfidf.fit_transform(df["text"].fillna("")).toarray()
 
     X_hand  = feat_df.select_dtypes(include=[np.number]).fillna(0).values
@@ -112,14 +122,16 @@ def train_calibrated_evaluator(df: pd.DataFrame) -> dict:
     X_tr, X_te, y_tr, y_te = train_test_split(
         X, y, test_size=0.20, random_state=SEED, stratify=y)
 
-    # ── Three classifiers ──────────────────────────────────────────────────────
+    # ── Stronger classifiers (more training capacity) ──────────────────────────
     models = {
         "LogisticRegression": LogisticRegression(
-            max_iter=500, C=1.0, random_state=SEED, solver="lbfgs"),
+            max_iter=2000, C=1.0, random_state=SEED, solver="lbfgs"),
         "RandomForest": RandomForestClassifier(
-            n_estimators=200, max_depth=12, random_state=SEED, n_jobs=-1),
+            n_estimators=400, max_depth=16, min_samples_leaf=2,
+            random_state=SEED, n_jobs=-1),
         "GradientBoosting": GradientBoostingClassifier(
-            n_estimators=100, max_depth=4, random_state=SEED),
+            n_estimators=200, max_depth=5, learning_rate=0.05,
+            random_state=SEED),
     }
 
     results = {}

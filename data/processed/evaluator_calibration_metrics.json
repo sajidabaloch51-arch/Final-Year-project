@@ -1,0 +1,109 @@
+{
+  "best_model": "LogisticRegression",
+  "best_accuracy": 1.0,
+  "krippendorff_alpha": 0.3333,
+  "model_results": {
+    "LogisticRegression": {
+      "accuracy": 1.0,
+      "kappa": 1.0,
+      "cv_mean": 1.0,
+      "cv_std": 0.0,
+      "confusion_matrix": [
+        [
+          50,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          50,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          50,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          50
+        ]
+      ]
+    },
+    "RandomForest": {
+      "accuracy": 1.0,
+      "kappa": 1.0,
+      "cv_mean": 1.0,
+      "cv_std": 0.0,
+      "confusion_matrix": [
+        [
+          50,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          50,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          50,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          50
+        ]
+      ]
+    },
+    "GradientBoosting": {
+      "accuracy": 1.0,
+      "kappa": 1.0,
+      "cv_mean": 1.0,
+      "cv_std": 0.0,
+      "confusion_matrix": [
+        [
+          50,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          50,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          50,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          50
+        ]
+      ]
+    }
+  },
+  "label_classes": [
+    "cultural_fidelity",
+    "gender_representation",
+    "neutral_control",
+    "stereotype_audit"
+  ]
+}

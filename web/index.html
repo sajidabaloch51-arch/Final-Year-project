@@ -1,0 +1,799 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Balochistan Prompt Browser & Text-to-Image Dashboard</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+      color: #18312a;
+      background: #f4f6f1;
+      font-synthesis: none;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    header {
+      padding: 32px max(24px, calc((100vw - 1120px) / 2));
+      color: #f8fbf7;
+      background: #174b3b;
+    }
+    header h1 { margin: 0 0 8px; font-size: clamp(1.6rem, 4vw, 2.25rem); }
+    header p { max-width: 760px; margin: 0; color: #d3e6dc; line-height: 1.5; font-size: 0.96rem; }
+    main { max-width: 1120px; margin: 28px auto; padding: 0 20px 40px; display: grid; gap: 24px; }
+
+    /* Generator Section */
+    .generator-card {
+      border: 1px solid #dce5dc;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 0 4px 18px #173d2e0c;
+      overflow: hidden;
+    }
+    .generator-header {
+      padding: 16px 20px;
+      background: #edf3ee;
+      border-bottom: 1px solid #dce5dc;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .generator-header h2 {
+      margin: 0;
+      font-size: 1.15rem;
+      color: #174b3b;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .badge-dataset {
+      font-size: 0.78rem;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #d4e7db;
+      color: #174b3b;
+      font-weight: 600;
+    }
+    .generator-body {
+      padding: 22px 20px;
+      display: grid;
+      gap: 20px;
+    }
+    .field-label {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #18312a;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 8px;
+    }
+    .field-hint {
+      font-weight: normal;
+      font-size: 0.8rem;
+      color: #63776b;
+    }
+    .prompt-input {
+      width: 100%;
+      min-height: 105px;
+      padding: 12px 14px;
+      border: 1px solid #cbd8cf;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      color: #18312a;
+      resize: vertical;
+      background: #fafbfa;
+      transition: border-color 0.15s, outline 0.15s;
+    }
+    .prompt-input:focus {
+      outline: 3px solid #a6d5b8;
+      outline-offset: 1px;
+      border-color: #174b3b;
+      background: #fff;
+    }
+    .actions-bar {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .btn-generate {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      padding: 12px 26px;
+      background: #174b3b;
+      color: #fff;
+      font-weight: 650;
+      font-size: 0.98rem;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 2px 8px #174b3b33;
+      transition: background 0.15s, transform 0.05s;
+    }
+    .btn-generate:hover:not(:disabled) {
+      background: #11382c;
+    }
+    .btn-generate:active:not(:disabled) {
+      transform: translateY(1px);
+    }
+    .btn-generate:disabled {
+      background: #8fa398;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    .btn-random {
+      background: #f0f4f0;
+      color: #244b3c;
+      border: 1px solid #cbd8cf;
+      padding: 10px 18px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-random:hover {
+      background: #e2ede4;
+    }
+
+    /* Generated Image Section */
+    .image-preview-panel {
+      margin-top: 4px;
+      padding: 18px;
+      border: 1px dashed #c0d3c6;
+      border-radius: 10px;
+      background: #f8faf8;
+      min-height: 260px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      position: relative;
+    }
+    .preview-header-label {
+      align-self: flex-start;
+      margin-bottom: 12px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #174b3b;
+    }
+    .empty-state {
+      color: #6c8074;
+      font-size: 0.92rem;
+      padding: 40px 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    .spinner {
+      width: 44px;
+      height: 44px;
+      border: 4px solid #d4e7db;
+      border-top-color: #174b3b;
+      border-radius: 50%;
+      animation: spin 0.85s linear infinite;
+      margin-bottom: 12px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .loading-container {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      color: #174b3b;
+      font-weight: 600;
+      font-size: 0.95rem;
+      padding: 30px;
+    }
+    .generated-result-container {
+      display: none;
+      width: 100%;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+    .preview-img {
+      max-width: 100%;
+      max-height: 720px;
+      width: auto;
+      height: auto;
+      border-radius: 8px;
+      border: 1px solid #d0ded4;
+      box-shadow: 0 6px 22px rgba(23, 61, 46, 0.12);
+      object-fit: contain;
+      image-rendering: auto;
+      -ms-interpolation-mode: bicubic;
+    }
+    .btn-download {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: #174b3b;
+      color: #ffffff;
+      padding: 10px 22px;
+      font-weight: 600;
+      font-size: 0.92rem;
+      border-radius: 7px;
+      text-decoration: none;
+      box-shadow: 0 2px 8px rgba(23, 75, 59, 0.2);
+      transition: background 0.15s;
+    }
+    .btn-download:hover {
+      background: #11382c;
+    }
+    .engine-tag {
+      font-size: 0.8rem;
+      color: #556c60;
+    }
+    .error-alert {
+      display: none;
+      width: 100%;
+      padding: 12px 16px;
+      background: #fde8e8;
+      border: 1px solid #f8b4b4;
+      border-radius: 8px;
+      color: #9b1c1c;
+      font-size: 0.9rem;
+      text-align: left;
+    }
+
+    /* Existing Dataset Browser Section */
+    .browser-section-title {
+      margin: 12px 0 0;
+      font-size: 1.25rem;
+      color: #174b3b;
+      font-weight: 700;
+    }
+    .toolbar {
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) minmax(200px, 280px);
+      gap: 14px;
+      padding: 18px;
+      border: 1px solid #dce5dc;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 0 4px 18px #173d2e0c;
+    }
+    label { display: grid; gap: 7px; font-size: .86rem; font-weight: 650; }
+    input, select {
+      width: 100%;
+      min-height: 42px;
+      padding: 9px 11px;
+      border: 1px solid #cbd8cf;
+      border-radius: 7px;
+      background: #fff;
+      color: inherit;
+      font: inherit;
+    }
+    input:focus, select:focus, button:focus-visible {
+      outline: 3px solid #a6d5b8;
+      outline-offset: 2px;
+    }
+    .summary {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin: 10px 2px 4px;
+      color: #53665b;
+      font-size: .92rem;
+    }
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid #dce5dc;
+      border-radius: 10px;
+      background: #fff;
+      box-shadow: 0 4px 18px #173d2e0c;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 14px 16px; text-align: left; vertical-align: top; }
+    th {
+      position: sticky;
+      top: 0;
+      color: #395448;
+      background: #edf3ee;
+      font-size: .78rem;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    tbody tr + tr { border-top: 1px solid #edf0ec; }
+    tbody tr:hover { background: #f8fbf8; cursor: pointer; }
+    td { line-height: 1.55; }
+    .id { min-width: 108px; font-weight: 700; white-space: nowrap; }
+    .category {
+      min-width: 160px;
+      color: #315143;
+      font-weight: 600;
+      text-transform: capitalize;
+    }
+    .prompt { min-width: 280px; }
+    .balochi {
+      min-width: 280px;
+      direction: rtl;
+      text-align: right;
+      font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+    }
+    .actions-cell {
+      min-width: 110px;
+      white-space: nowrap;
+    }
+    .btn-select {
+      background: #174b3b;
+      color: #fff;
+      border: none;
+      padding: 6px 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .btn-select:hover {
+      background: #11382c;
+    }
+    .pagination {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 12px;
+      margin-top: 10px;
+    }
+    .pagination button {
+      min-height: 38px;
+      padding: 0 16px;
+      border: 1px solid #c7d5cb;
+      border-radius: 7px;
+      background: #fff;
+      color: inherit;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .pagination button:hover:not(:disabled) {
+      background: #eef4f0;
+      border-color: #174b3b;
+    }
+    .pagination button:disabled { opacity: 0.45; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Balochistan Prompt Browser</h1>
+    <p>A Cultural Fidelity and Stereotype Benchmark for Text-to-Image Generation across Balochistan, Turbat, Gwadar, and Makran Coast.</p>
+  </header>
+
+  <main>
+    <!-- Section 1: Text-to-Image Generator Dashboard -->
+    <section class="generator-card" id="t2i-generator">
+      <div class="generator-header">
+        <h2>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          Text-to-Image Generator
+        </h2>
+        <span class="badge-dataset" id="current-prompt-meta">Loaded from Benchmark Dataset</span>
+      </div>
+
+      <div class="generator-body">
+        <div>
+          <div class="field-label">
+            <span>Image Generation Prompt</span>
+            <span class="field-hint" id="lang-indicator">English / Balochi (RTL supported)</span>
+          </div>
+          <textarea
+            id="generation-prompt"
+            class="prompt-input"
+            placeholder="Select a prompt from the dataset table below or enter a custom prompt in English or Balochi..."
+          >A simple, neutral photograph of a Baloch craftsperson making embroidered textiles on the Makran coast; keep the scene grounded in everyday life; a respectful everyday scene.</textarea>
+        </div>
+
+        <div class="actions-bar">
+          <button id="btn-generate" class="btn-generate" type="button">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Generate Image
+          </button>
+          <button id="btn-random" class="btn-random" type="button">
+            🎲 Pick Random Benchmark Prompt
+          </button>
+          <button id="btn-toggle-lang" class="btn-random" type="button">
+            🌐 Switch Prompt to Balochi / English
+          </button>
+        </div>
+
+        <!-- Error Alert -->
+        <div id="error-alert" class="error-alert"></div>
+
+        <!-- Generated Image Display Container -->
+        <div>
+          <div class="preview-header-label">Generated Image</div>
+          <div class="image-preview-panel" id="preview-panel">
+            
+            <div id="empty-state" class="empty-state">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#9bb1a4" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+              <span>Your generated image will appear here.</span>
+              <span style="font-size:0.8rem; color:#8fa398;">Click "Generate Image" to synthesize an image based on the prompt.</span>
+            </div>
+
+            <div id="loading-state" class="loading-container">
+              <div class="spinner"></div>
+              <span>Generating image from your prompt...</span>
+              <span style="font-size:0.8rem; color:#63776b; margin-top:6px;">Exact prompt fidelity — this can take up to 3 minutes.</span>
+            </div>
+
+            <div id="result-state" class="generated-result-container">
+              <img id="generated-image" class="preview-img" alt="Generated image based on prompt" />
+              <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; justify-content:center;">
+                <a id="download-link" class="btn-download" download="balochistan_t2i_generated.png" href="#">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Download Image
+                </a>
+                <span id="engine-info" class="engine-tag">Engine: Live T2I Backend</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 2: Existing Dataset Prompts Browser -->
+    <h3 class="browser-section-title">Benchmark Prompt Dataset (1,000 Samples)</h3>
+    <p style="margin: -14px 0 0; color: #53665b; font-size: 0.9rem;">Click "Use in Generator" on any prompt below to populate the Image Generation Prompt above.</p>
+
+    <section class="toolbar" aria-label="Filters">
+      <label>
+        Search prompts
+        <input id="search" type="search" placeholder="e.g. Gwadar, doctor, clinic, textiles, Turbat, football...">
+      </label>
+      <label>
+        Category
+        <select id="category">
+          <option value="">All categories</option>
+        </select>
+      </label>
+    </section>
+
+    <div class="summary">
+      <span id="count">Loading prompt dataset...</span>
+      <span id="page"></span>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Action</th>
+            <th>ID</th>
+            <th>Category</th>
+            <th>English Prompt</th>
+            <th>Balochi Prompt</th>
+          </tr>
+        </thead>
+        <tbody id="results">
+          <tr>
+            <td id="status" colspan="5">Loading prompts...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <nav class="pagination" aria-label="Pagination">
+      <button id="previous" type="button" disabled>Previous</button>
+      <button id="next" type="button" disabled>Next</button>
+    </nav>
+  </main>
+
+  <script>
+    const pageSize = 20;
+    let prompts = [];
+    let currentPage = 1;
+    let selectedPromptItem = null;
+
+    // Elements
+    const promptInput = document.querySelector("#generation-prompt");
+    const langIndicator = document.querySelector("#lang-indicator");
+    const metaBadge = document.querySelector("#current-prompt-meta");
+    const btnGenerate = document.querySelector("#btn-generate");
+    const btnRandom = document.querySelector("#btn-random");
+    const btnToggleLang = document.querySelector("#btn-toggle-lang");
+    const errorAlert = document.querySelector("#error-alert");
+
+    const emptyState = document.querySelector("#empty-state");
+    const loadingState = document.querySelector("#loading-state");
+    const resultState = document.querySelector("#result-state");
+    const generatedImage = document.querySelector("#generated-image");
+    const downloadLink = document.querySelector("#download-link");
+    const engineInfo = document.querySelector("#engine-info");
+
+    const searchInput = document.querySelector("#search");
+    const categorySelect = document.querySelector("#category");
+    const results = document.querySelector("#results");
+    const count = document.querySelector("#count");
+    const pageLabel = document.querySelector("#page");
+    const previous = document.querySelector("#previous");
+    const next = document.querySelector("#next");
+
+    function detectRTL(text) {
+      const rtlChars = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+      return rtlChars.test(text);
+    }
+
+    function updatePromptDirection() {
+      const val = promptInput.value;
+      if (detectRTL(val)) {
+        promptInput.style.direction = "rtl";
+        promptInput.style.textAlign = "right";
+        langIndicator.textContent = "Balochi Script (Right-to-Left RTL Active)";
+      } else {
+        promptInput.style.direction = "ltr";
+        promptInput.style.textAlign = "left";
+        langIndicator.textContent = "English Text (Standard LTR)";
+      }
+    }
+
+    promptInput.addEventListener("input", updatePromptDirection);
+
+    // Image Generation Request
+    async function handleGenerateImage() {
+      const promptText = promptInput.value.trim();
+      if (!promptText) {
+        showError("Please enter or select a prompt before generating an image.");
+        return;
+      }
+
+      // UI Loading state
+      hideError();
+      btnGenerate.disabled = true;
+      btnRandom.disabled = true;
+      btnToggleLang.disabled = true;
+      emptyState.style.display = "none";
+      resultState.style.display = "none";
+      loadingState.style.display = "flex";
+
+      try {
+        const response = await fetch("/api/generate-image", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            prompt: promptText,
+            // High-entropy seed every click (time + random) so images never repeat.
+            seed: (Date.now() ^ (Math.floor(Math.random() * 0x7fffffff))) >>> 0,
+            width: 1024,
+            height: 1024
+          })
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.detail || `Server returned error (${response.status})`);
+        }
+
+        if (data.image) {
+          // Bust any browser/image-element caching of prior data URIs
+          generatedImage.src = "";
+          generatedImage.src = data.image;
+          downloadLink.href = data.image;
+          const seedLabel = data.seed != null ? ` · seed ${data.seed}` : "";
+          engineInfo.textContent = `Generated via: ${data.provider || "Neural Engine"}${seedLabel}`;
+          loadingState.style.display = "none";
+          resultState.style.display = "flex";
+        } else {
+          throw new Error("No image data returned from generation endpoint.");
+        }
+      } catch (err) {
+        loadingState.style.display = "none";
+        emptyState.style.display = "flex";
+        showError(`Generation error: ${err.message}`);
+      } finally {
+        btnGenerate.disabled = false;
+        btnRandom.disabled = false;
+        btnToggleLang.disabled = false;
+      }
+    }
+
+    function showError(msg) {
+      errorAlert.textContent = msg;
+      errorAlert.style.display = "block";
+    }
+
+    function hideError() {
+      errorAlert.style.display = "none";
+      errorAlert.textContent = "";
+    }
+
+    btnGenerate.addEventListener("click", handleGenerateImage);
+
+    // Pick random prompt from dataset
+    btnRandom.addEventListener("click", () => {
+      if (prompts.length === 0) return;
+      const randIdx = Math.floor(Math.random() * prompts.length);
+      selectPrompt(prompts[randIdx]);
+    });
+
+    // Toggle between Balochi and English for current prompt
+    btnToggleLang.addEventListener("click", () => {
+      if (!selectedPromptItem) {
+        // Fallback: check if prompt is in dataset
+        const currentVal = promptInput.value.trim();
+        selectedPromptItem = prompts.find(p => p.text === currentVal || p.balochi_prompt === currentVal);
+      }
+
+      if (selectedPromptItem) {
+        const isCurrentlyBalochi = detectRTL(promptInput.value);
+        if (isCurrentlyBalochi && selectedPromptItem.text) {
+          promptInput.value = selectedPromptItem.text;
+        } else if (!isCurrentlyBalochi && selectedPromptItem.balochi_prompt) {
+          promptInput.value = selectedPromptItem.balochi_prompt;
+        }
+        updatePromptDirection();
+      } else {
+        showError("Select a prompt from the table below to switch between English and Balochi.");
+      }
+    });
+
+    function selectPrompt(item) {
+      selectedPromptItem = item;
+      hideError();
+      promptInput.value = item.text || item.balochi_prompt;
+      updatePromptDirection();
+      metaBadge.textContent = `${item.prompt_id} (${item.label.replaceAll("_", " ")})`;
+      // Smooth scroll to generator
+      document.querySelector("#t2i-generator").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function parseCsv(csv) {
+      const rows = [];
+      let row = [];
+      let field = "";
+      let quoted = false;
+      for (let i = 0; i < csv.length; i++) {
+        const char = csv[i];
+        if (quoted) {
+          if (char === '"' && csv[i + 1] === '"') {
+            field += '"';
+            i++;
+          } else if (char === '"') {
+            quoted = false;
+          } else {
+            field += char;
+          }
+        } else if (char === '"' && field.length === 0) {
+          quoted = true;
+        } else if (char === ",") {
+          row.push(field);
+          field = "";
+        } else if (char === "\n" || char === "\r") {
+          if (char === "\r" && csv[i + 1] === "\n") i++;
+          row.push(field);
+          if (row.some(value => value !== "")) rows.push(row);
+          row = [];
+          field = "";
+        } else {
+          field += char;
+        }
+      }
+      if (quoted) throw new Error("The prompt CSV contains an unclosed quoted field.");
+      if (field !== "" || row.length > 0) {
+        row.push(field);
+        if (row.some(value => value !== "")) rows.push(row);
+      }
+      if (rows.length < 2) throw new Error("The prompt CSV contains no prompt rows.");
+      const headers = rows[0].map(header => header.replace(/^\uFEFF/, ""));
+      return rows.slice(1).map(values =>
+        Object.fromEntries(headers.map((header, index) => [header, values[index] ?? ""]))
+      );
+    }
+
+    function visiblePrompts() {
+      const query = searchInput.value.trim().toLocaleLowerCase();
+      const category = categorySelect.value;
+      return prompts.filter(prompt => {
+        const matchesCategory = !category || prompt.label === category;
+        const searchable = [prompt.prompt_id, prompt.text, prompt.balochi_prompt]
+          .join(" ").toLocaleLowerCase();
+        return matchesCategory && (!query || searchable.includes(query));
+      });
+    }
+
+    function render() {
+      const filtered = visiblePrompts();
+      const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
+      currentPage = Math.min(currentPage, pageCount);
+      const start = (currentPage - 1) * pageSize;
+      count.textContent = `Showing ${filtered.length ? start + 1 : 0}–${Math.min(start + pageSize, filtered.length)} of ${filtered.length.toLocaleString()} prompts`;
+      pageLabel.textContent = `Page ${currentPage} of ${pageCount}`;
+      previous.disabled = currentPage === 1;
+      next.disabled = currentPage === pageCount;
+      results.replaceChildren();
+
+      const visible = filtered.slice(start, start + pageSize);
+      if (visible.length === 0) {
+        const row = document.createElement("tr");
+        const cell = document.createElement("td");
+        cell.colSpan = 5;
+        cell.className = "empty";
+        cell.textContent = "No prompts match your search.";
+        row.append(cell);
+        results.append(row);
+        return;
+      }
+
+      for (const prompt of visible) {
+        const row = document.createElement("tr");
+
+        // Action column
+        const actCell = document.createElement("td");
+        actCell.className = "actions-cell";
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn-select";
+        btn.textContent = "Use in Generator";
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          selectPrompt(prompt);
+        });
+        actCell.append(btn);
+        row.append(actCell);
+
+        for (const [value, className] of [
+          [prompt.prompt_id, "id"],
+          [prompt.label.replaceAll("_", " "), "category"],
+          [prompt.text, "prompt"],
+          [prompt.balochi_prompt, "balochi"]
+        ]) {
+          const cell = document.createElement("td");
+          cell.className = className;
+          cell.textContent = value;
+          if (className === "balochi") {
+            cell.lang = "bal";
+            cell.dir = "rtl";
+          }
+          row.append(cell);
+        }
+
+        row.addEventListener("click", () => selectPrompt(prompt));
+        results.append(row);
+      }
+    }
+
+    searchInput.addEventListener("input", () => { currentPage = 1; render(); });
+    categorySelect.addEventListener("change", () => { currentPage = 1; render(); });
+    previous.addEventListener("click", () => { currentPage--; render(); });
+    next.addEventListener("click", () => { currentPage++; render(); });
+
+    fetch("/data/raw/prompts_with_balochi.csv")
+      .then(response => {
+        if (!response.ok) throw new Error(`Dataset request failed (${response.status}).`);
+        return response.text();
+      })
+      .then(csv => {
+        prompts = parseCsv(csv);
+        const categories = [...new Set(prompts.map(prompt => prompt.label).filter(Boolean))].sort();
+        for (const value of categories) {
+          const option = document.createElement("option");
+          option.value = value;
+          option.textContent = value.replaceAll("_", " ");
+          categorySelect.append(option);
+        }
+        render();
+        updatePromptDirection();
+      })
+      .catch(error => {
+        count.textContent = "Could not load prompt dataset";
+        const cell = document.querySelector("#status");
+        if (cell) {
+          cell.textContent = `${error.message} Start the local backend server so the dataset is accessible.`;
+          cell.classList.add("error");
+        }
+      });
+  </script>
+</body>
+</html>

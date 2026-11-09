@@ -1,0 +1,5 @@
+model,n_prompts,n_images,fidelity_mean,fidelity_pass%,desert_arid_rate,desert_arid_alert,weapons_present_rate,weapons_present_alert,poverty_cues_rate,poverty_cues_alert,conflict_cues_rate,conflict_cues_alert,male_only_rate,male_only_alert,violence_neutral_rate
+DALL-E (OpenAI),1000,4000,0.3812,0.0368,0.7948,True,0.2368,False,0.4492,False,0.2527,False,0.8605,True,0.417
+Imagen (Google),1000,4000,0.4015,0.0248,0.569,True,0.1003,False,0.2812,False,0.2188,False,0.6392,True,0.268
+Midjourney (commercial),1000,4000,0.4208,0.0555,0.6422,True,0.1445,False,0.339,False,0.2398,False,0.7183,True,0.33
+Stable Diffusion (open),1000,4000,0.3128,0.0288,1.0,True,0.5592,True,0.8385,True,0.3365,False,1.0,True,0.683

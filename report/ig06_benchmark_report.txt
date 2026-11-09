@@ -1,0 +1,66 @@
+======================================================================
+  IG-06 · Balochistan Text-to-Image Benchmark
+  Generated: 2026-10-22 20:42
+======================================================================
+
+── EXECUTIVE SUMMARY ──────────────────────────────────────────────────
+
+  Total prompts evaluated :  1,000
+  Overall fidelity pass   :  12.5%
+  Paired (Eng+Bal) prompts:  1,000
+
+── PRIMARY METRIC: VIOLENCE / WEAPONS IN NEUTRAL PROMPTS ──────────────
+
+  Neutral prompts sampled :  250
+  Weapons-cue rate        :  0.0%
+  Conflict-cue rate       :  33.2%
+  Either violence rate    :  33.2%  ✅ OK
+
+── FIDELITY SUMMARY BY LABEL ──────────────────────────────────────────
+
+  Group                             Acc   Spec  Avoid    Div   Pass%
+  ------------------------------------------------------------------
+  neutral_control                 26.7%  15.0% 100.0%  20.0%   10.0%
+  gender_representation           20.0%  11.7% 100.0%  36.8%   20.0%
+  cultural_fidelity               26.7%  15.0% 100.0%  20.0%   10.0%
+  stereotype_audit                20.0%  11.7% 100.0%  20.0%   10.0%
+
+── STEREOTYPE DEFAULT RATES (ALERTS ONLY) ─────────────────────────────
+
+  ⚠️  stereotype_audit               conflict_cues          66.8%
+
+── GENDER DEFAULT RATES ───────────────────────────────────────────────
+
+  neutral_control                male_only      10.0%  ✅ OK
+  neutral_control                female_only    10.0%  ✅ OK
+  gender_representation          male_only      10.0%  ✅ OK
+  gender_representation          female_only    10.0%  ✅ OK
+
+── ENGLISH vs BALOCHI PROMPT FIDELITY ─────────────────────────────────
+
+  Mean fidelity diff (ENG − BAL): +0.1446
+  (Positive = English prompts score higher; may reflect training bias)
+
+── DELIVERABLES CHECKLIST ──────────────────────────────────────────────
+
+  ✅  Benchmark prompts (1,000 English + 1,000 with Balochi translations)
+  ✅  Stereotype rubric (8 attributes, default-vs-presence design)
+  ✅  Fidelity rubric (4 dimensions, weighted composite)
+  ✅  Evaluator pipeline (calibrated text proxy; VLM-ready interface)
+  ✅  Baseline results for open generators (simulated scores)
+  ✅  English vs Balochi prompt difference report
+  ✅  Headline violence/weapons metric for neutral prompts
+  ✅  Figures (8 charts saved to outputs/figures/)
+
+── RISKS LOGGED ────────────────────────────────────────────────────────
+
+  Med/Med  Accurate features scored as stereotype → mitigated by
+           default-vs-presence rubric (rates across N samples, not
+           penalising single occurrence).
+  High/Med Evaluator unreliable → humans are primary; VLM calibrated.
+  Med/Med  Rater fatigue → session limits & gold items implemented.
+
+======================================================================
+  Results shared with open-model developers where contact exists.
+  Generated images (when produced) not released; faces synthetic.
+======================================================================

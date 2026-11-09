@@ -1,0 +1,5 @@
+group,n,fidelity_specificity_mean,fidelity_accuracy_mean,fidelity_avoidance_mean,fidelity_diversity_mean,fidelity_composite_mean,pass_rate
+neutral_control,250,0.15,0.2666,1.0,0.2,0.4533,0.1
+gender_representation,250,0.1167,0.2,1.0,0.368,0.4485,0.2
+cultural_fidelity,250,0.15,0.2666,1.0,0.2,0.4533,0.1
+stereotype_audit,250,0.1167,0.2,1.0,0.2,0.4233,0.1

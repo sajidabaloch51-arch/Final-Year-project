@@ -1,0 +1,5 @@
+group,attribute,rate,alert
+neutral_control,male_only,0.1,False
+neutral_control,female_only,0.1,False
+gender_representation,male_only,0.1,False
+gender_representation,female_only,0.1,False

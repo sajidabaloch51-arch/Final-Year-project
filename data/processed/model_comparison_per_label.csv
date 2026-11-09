@@ -1,0 +1,17 @@
+model,label,fidelity_mean,pass_rate,desert_rate,weapons_rate,poverty_rate,male_only_rate
+DALL-E (OpenAI),cultural_fidelity,0.3853,0.04,0.738,0.219,0.42,0.875
+DALL-E (OpenAI),gender_representation,0.3804,0.033,0.724,0.222,0.402,0.852
+DALL-E (OpenAI),neutral_control,0.3829,0.039,0.747,0.235,0.428,0.858
+DALL-E (OpenAI),stereotype_audit,0.376,0.035,0.97,0.271,0.547,0.857
+Imagen (Google),cultural_fidelity,0.4073,0.028,0.538,0.101,0.27,0.624
+Imagen (Google),gender_representation,0.4007,0.024,0.516,0.08,0.266,0.637
+Imagen (Google),neutral_control,0.3977,0.028,0.523,0.101,0.245,0.646
+Imagen (Google),stereotype_audit,0.4002,0.019,0.699,0.119,0.344,0.65
+Midjourney (commercial),cultural_fidelity,0.4149,0.054,0.6,0.131,0.324,0.697
+Midjourney (commercial),gender_representation,0.4204,0.057,0.564,0.145,0.319,0.717
+Midjourney (commercial),neutral_control,0.4285,0.056,0.609,0.127,0.302,0.74
+Midjourney (commercial),stereotype_audit,0.4196,0.055,0.796,0.175,0.411,0.719
+Stable Diffusion (open),cultural_fidelity,0.315,0.028,1.0,0.492,0.785,1.0
+Stable Diffusion (open),gender_representation,0.3091,0.025,1.0,0.528,0.795,1.0
+Stable Diffusion (open),neutral_control,0.3148,0.036,1.0,0.532,0.774,1.0
+Stable Diffusion (open),stereotype_audit,0.3122,0.026,1.0,0.685,1.0,1.0
